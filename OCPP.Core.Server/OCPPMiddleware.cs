@@ -12,6 +12,7 @@ using System.Net;
 using System.Net.WebSockets;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace OCPP.Core.Server
 {
@@ -335,6 +336,103 @@ namespace OCPP.Core.Server
                         else
                         {
                             _logger.LogError("OCPPMiddleware SoftReset => Missing chargepoint ID");
+                            context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                        }
+                    }
+                    
+                    else if (cmd == "RemoteStartTransaction")
+                    {
+                        if (!string.IsNullOrEmpty(urlChargePointId))
+                        {
+                            try
+                            {
+                                ChargePointStatus status = null;
+                                ConnectorStatus connectorStatus = dbContext.Find<ConnectorStatus>(urlChargePointId);
+                                if (_chargePointStatusDict.TryGetValue(urlChargePointId, out status))
+                                {
+                                    // Send message to chargepoint
+                                    if (status.Protocol == Protocol_OCPP20)
+                                    {
+                                        // OCPP V2.0
+                                        //await RemoteStopTransaction20(status, context, dbContext);
+                                        throw new NotImplementedException("RemoteStartTransaction20 not implemented");
+                                    }
+                                    else
+                                    {
+                                        // OCPP V1.6
+                                        await RemoteStartTransaction16(status,connectorStatus, "5A6476D4", context, dbContext);
+                                    }
+                                }
+                                else
+                                {
+                                    // Chargepoint offline
+                                    _logger.LogError("OCPPMiddleware RemoteStartTransaction => Chargepoint offline: {0}", urlChargePointId);
+                                    context.Response.StatusCode = (int)HttpStatusCode.NotFound;
+                                }
+                            }
+                            catch (Exception exp)
+                            {
+                                _logger.LogError(exp, "OCPPMiddleware RemoteStartTransaction => Error: {0}", exp.Message);
+                                context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogError("OCPPMiddleware RemoteStartTransaction => Missing chargepoint ID");
+                            context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                        }
+                    }
+                    else if (cmd == "RemoteStopTransaction")
+                    {
+                        if (!string.IsNullOrEmpty(urlChargePointId))
+                        {
+                            try
+                            {
+                                ChargePointStatus status = null;
+                                ConnectorStatus connectorStatus = dbContext.Find<ConnectorStatus>(urlChargePointId);
+                                Transaction openTransaction = dbContext.Transactions.Where(t => t.ChargePointId == urlChargePointId && t.ConnectorId == connectorStatus.ConnectorId && t.StopTime == null).FirstOrDefault();
+                                if (_chargePointStatusDict.TryGetValue(urlChargePointId, out status))
+                                {
+                                    
+                                    if (openTransaction != null)
+                                    {
+                                        // Send message to chargepoint
+                                        if (status.Protocol == Protocol_OCPP20)
+                                        {
+                                            // OCPP V2.0
+                                            //await RemoteStopTransaction20(status, context, dbContext);
+                                            throw new NotImplementedException("RemoteStartTransaction20 not implemented");
+                                        }
+                                        else
+                                        {
+                                            // OCPP V1.6
+                                            await RemoteStopTransaction16(status,openTransaction, context, dbContext);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // Transaction already open
+                                        _logger.LogError("OCPPMiddleware RemoteStopTransaction => No Tranaction to Close ");
+                                        context.Response.StatusCode = (int)HttpStatusCode.NotFound;
+                                    }
+                                    
+                                }
+                                else
+                                {
+                                    // Chargepoint offline
+                                    _logger.LogError("OCPPMiddleware RemoteStopTransaction => Chargepoint offline: {0}", urlChargePointId);
+                                    context.Response.StatusCode = (int)HttpStatusCode.NotFound;
+                                }
+                            }
+                            catch (Exception exp)
+                            {
+                                _logger.LogError(exp, "OCPPMiddleware RemoteStopTransaction => Error: {0}", exp.Message);
+                                context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogError("OCPPMiddleware RemoteStopTransaction => Missing chargepoint ID");
                             context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
                         }
                     }

@@ -21,10 +21,12 @@ namespace OCPP.Core.Server
         /// <summary>
         /// Waits for new OCPP V1.6 messages on the open websocket connection and delegates processing to a controller
         /// </summary>
-        private async Task Receive16(ChargePointStatus chargePointStatus, HttpContext context, OCPPCoreContext dbContext)
+        private async Task Receive16(ChargePointStatus chargePointStatus, HttpContext context,
+            OCPPCoreContext dbContext)
         {
             ILogger logger = _logFactory.CreateLogger("OCPPMiddleware.OCPP16");
-            ControllerOCPP16 controller16 = new ControllerOCPP16(_configuration, _logFactory, chargePointStatus, dbContext);
+            ControllerOCPP16 controller16 =
+                new ControllerOCPP16(_configuration, _logFactory, chargePointStatus, dbContext);
 
             int maxMessageSizeBytes = _configuration.GetValue<int>("MaxMessageSize", 0);
 
@@ -33,10 +35,14 @@ namespace OCPP.Core.Server
 
             while (chargePointStatus.WebSocket.State == WebSocketState.Open)
             {
-                WebSocketReceiveResult result = await chargePointStatus.WebSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                WebSocketReceiveResult result =
+                    await chargePointStatus.WebSocket.ReceiveAsync(new ArraySegment<byte>(buffer),
+                        CancellationToken.None);
                 if (result != null && result.MessageType != WebSocketMessageType.Close)
                 {
-                    logger.LogTrace("OCPPMiddleware.Receive16 => Receiving segment: {0} bytes (EndOfMessage={1} / MsgType={2})", result.Count, result.EndOfMessage, result.MessageType);
+                    logger.LogTrace(
+                        "OCPPMiddleware.Receive16 => Receiving segment: {0} bytes (EndOfMessage={1} / MsgType={2})",
+                        result.Count, result.EndOfMessage, result.MessageType);
                     memStream.Write(buffer, 0, result.Count);
 
                     // max. allowed message size NOT exceeded - or limit deactivated?
@@ -52,7 +58,9 @@ namespace OCPP.Core.Server
                             string dumpDir = _configuration.GetValue<string>("MessageDumpDir");
                             if (!string.IsNullOrWhiteSpace(dumpDir))
                             {
-                                string path = Path.Combine(dumpDir, string.Format("{0}_ocpp16-in.txt", DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss-ffff")));
+                                string path = Path.Combine(dumpDir,
+                                    string.Format("{0}_ocpp16-in.txt",
+                                        DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss-ffff")));
                                 try
                                 {
                                     // Write incoming message into dump directory
@@ -60,7 +68,9 @@ namespace OCPP.Core.Server
                                 }
                                 catch (Exception exp)
                                 {
-                                    logger.LogError(exp, "OCPPMiddleware.Receive16 => Error dumping incoming message to path: '{0}'", path);
+                                    logger.LogError(exp,
+                                        "OCPPMiddleware.Receive16 => Error dumping incoming message to path: '{0}'",
+                                        path);
                                 }
                             }
 
@@ -73,7 +83,9 @@ namespace OCPP.Core.Server
                                 string uniqueId = match.Groups[2].Value;
                                 string action = match.Groups[3].Value;
                                 string jsonPaylod = match.Groups[4].Value;
-                                logger.LogInformation("OCPPMiddleware.Receive16 => OCPP-Message: Type={0} / ID={1} / Action={2})", messageTypeId, uniqueId, action);
+                                logger.LogInformation(
+                                    "OCPPMiddleware.Receive16 => OCPP-Message: Type={0} / ID={1} / Action={2})",
+                                    messageTypeId, uniqueId, action);
 
                                 OCPPMessage msgIn = new OCPPMessage(messageTypeId, uniqueId, action, jsonPaylod);
                                 if (msgIn.MessageType == "2")
@@ -94,35 +106,46 @@ namespace OCPP.Core.Server
                                     }
                                     else
                                     {
-                                        logger.LogError("OCPPMiddleware.Receive16 => HttpContext from caller not found / Msg: {0}", ocppMessage);
+                                        logger.LogError(
+                                            "OCPPMiddleware.Receive16 => HttpContext from caller not found / Msg: {0}",
+                                            ocppMessage);
                                     }
                                 }
                                 else
                                 {
                                     // Unknown message type
-                                    logger.LogError("OCPPMiddleware.Receive16 => Unknown message type: {0} / Msg: {1}", msgIn.MessageType, ocppMessage);
+                                    logger.LogError("OCPPMiddleware.Receive16 => Unknown message type: {0} / Msg: {1}",
+                                        msgIn.MessageType, ocppMessage);
                                 }
                             }
                             else
                             {
-                                logger.LogWarning("OCPPMiddleware.Receive16 => Error in RegEx-Matching: Msg={0})", ocppMessage);
+                                logger.LogWarning("OCPPMiddleware.Receive16 => Error in RegEx-Matching: Msg={0})",
+                                    ocppMessage);
                             }
                         }
                     }
                     else
                     {
                         // max. allowed message size exceeded => close connection (DoS attack?)
-                        logger.LogInformation("OCPPMiddleware.Receive16 => Allowed message size exceeded - close connection");
-                        await chargePointStatus.WebSocket.CloseOutputAsync(WebSocketCloseStatus.MessageTooBig, string.Empty, CancellationToken.None);
+                        logger.LogInformation(
+                            "OCPPMiddleware.Receive16 => Allowed message size exceeded - close connection");
+                        await chargePointStatus.WebSocket.CloseOutputAsync(WebSocketCloseStatus.MessageTooBig,
+                            string.Empty, CancellationToken.None);
                     }
                 }
                 else
                 {
-                    logger.LogInformation("OCPPMiddleware.Receive16 => WebSocket Closed: CloseStatus={0} / MessageType={1}", result?.CloseStatus, result?.MessageType);
-                    await chargePointStatus.WebSocket.CloseOutputAsync((WebSocketCloseStatus)3001, string.Empty, CancellationToken.None);
+                    logger.LogInformation(
+                        "OCPPMiddleware.Receive16 => WebSocket Closed: CloseStatus={0} / MessageType={1}",
+                        result?.CloseStatus, result?.MessageType);
+                    await chargePointStatus.WebSocket.CloseOutputAsync((WebSocketCloseStatus)3001, string.Empty,
+                        CancellationToken.None);
                 }
             }
-            logger.LogInformation("OCPPMiddleware.Receive16 => Websocket closed: State={0} / CloseStatus={1}", chargePointStatus.WebSocket.State, chargePointStatus.WebSocket.CloseStatus);
+
+            logger.LogInformation("OCPPMiddleware.Receive16 => Websocket closed: State={0} / CloseStatus={1}",
+                chargePointStatus.WebSocket.State, chargePointStatus.WebSocket.CloseStatus);
             ChargePointStatus dummy;
             _chargePointStatusDict.Remove(chargePointStatus.Id, out dummy);
         }
@@ -130,10 +153,12 @@ namespace OCPP.Core.Server
         /// <summary>
         /// Waits for new OCPP V1.6 messages on the open websocket connection and delegates processing to a controller
         /// </summary>
-        private async Task Reset16(ChargePointStatus chargePointStatus, HttpContext apiCallerContext, OCPPCoreContext dbContext)
+        private async Task Reset16(ChargePointStatus chargePointStatus, HttpContext apiCallerContext,
+            OCPPCoreContext dbContext)
         {
             ILogger logger = _logFactory.CreateLogger("OCPPMiddleware.OCPP16");
-            ControllerOCPP16 controller16 = new ControllerOCPP16(_configuration, _logFactory, chargePointStatus, dbContext);
+            ControllerOCPP16 controller16 =
+                new ControllerOCPP16(_configuration, _logFactory, chargePointStatus, dbContext);
 
             Messages_OCPP16.ResetRequest resetRequest = new Messages_OCPP16.ResetRequest();
             resetRequest.Type = Messages_OCPP16.ResetRequestType.Soft;
@@ -162,14 +187,115 @@ namespace OCPP.Core.Server
         }
 
         /// <summary>
-        /// Sends a Unlock-Request to the chargepoint
+        /// Sends a StartTransaction-Request to the chargepoint
         /// </summary>
-        private async Task UnlockConnector16(ChargePointStatus chargePointStatus, HttpContext apiCallerContext, OCPPCoreContext dbContext)
+        /// <param name="chargePointStatus"></param>
+        /// <param name="IdTag"></param>
+        /// <param name="apiCallerContext"></param>
+        /// <param name="dbContext"></param>
+        private async Task RemoteStartTransaction16(
+            ChargePointStatus chargePointStatus,
+            ConnectorStatus connectorStatus,
+            string IdTag,
+            HttpContext apiCallerContext,
+            OCPPCoreContext dbContext
+        )
         {
             ILogger logger = _logFactory.CreateLogger("OCPPMiddleware.OCPP16");
-            ControllerOCPP16 controller16 = new ControllerOCPP16(_configuration, _logFactory, chargePointStatus, dbContext);
+            ControllerOCPP16 controller16 =
+                new ControllerOCPP16(_configuration, _logFactory, chargePointStatus, dbContext);
 
-            Messages_OCPP16.UnlockConnectorRequest unlockConnectorRequest = new Messages_OCPP16.UnlockConnectorRequest();
+            Messages_OCPP16.RemoteStartTransactionRequest remoteStartTransactionRequest =
+                new Messages_OCPP16.RemoteStartTransactionRequest();
+            //json stringify
+            string json =  JsonConvert.SerializeObject(chargePointStatus);
+            
+            logger.LogInformation(json);
+            remoteStartTransactionRequest.ConnectorId = connectorStatus.ConnectorId;
+            remoteStartTransactionRequest.IdTag = IdTag;
+
+            string jsonRemoteStartTransactionRequest = JsonConvert.SerializeObject(remoteStartTransactionRequest);
+
+            OCPPMessage msgOut = new OCPPMessage();
+            msgOut.MessageType = "2";
+            msgOut.Action = "RemoteStartTransaction";
+            msgOut.UniqueId = Guid.NewGuid().ToString("N");
+            msgOut.JsonPayload = jsonRemoteStartTransactionRequest;
+            msgOut.TaskCompletionSource = new TaskCompletionSource<string>();
+
+            // store HttpContext with MsgId for later answer processing (=> send anwer to API caller)
+            _requestQueue.Add(msgOut.UniqueId, msgOut);
+
+            // Send OCPP message with optional logging/dump
+            await SendOcpp16Message(msgOut, logger, chargePointStatus.WebSocket);
+
+            // Wait for asynchronous chargepoint response and processing
+            string apiResult = await msgOut.TaskCompletionSource.Task;
+
+            // 
+            apiCallerContext.Response.StatusCode = 200;
+            apiCallerContext.Response.ContentType = "application/json";
+            await apiCallerContext.Response.WriteAsync(apiResult);
+        }
+
+        /// <summary>
+        /// Sends a StopTransaction-Request to the chargepoint
+        /// </summary>
+        /// <param name="chargePointStatus"></param>
+        /// <param name="transaction"></param>
+        /// <param name="apiCallerContext"></param>
+        /// <param name="dbContext"></param>
+        private async Task RemoteStopTransaction16(
+            ChargePointStatus chargePointStatus,
+            Transaction transaction,
+            HttpContext apiCallerContext,
+            OCPPCoreContext dbContext)
+        {
+            ILogger logger = _logFactory.CreateLogger("OCPPMiddleware.OCPP16");
+            ControllerOCPP16 controller16 =
+                new ControllerOCPP16(_configuration, _logFactory, chargePointStatus, dbContext);
+
+            Messages_OCPP16.RemoteStopTransactionRequest remoteStopTransactionRequest =
+                new Messages_OCPP16.RemoteStopTransactionRequest();
+            remoteStopTransactionRequest.TransactionId = transaction.TransactionId;
+
+            string jsonRemoteStopTransactionRequest = JsonConvert.SerializeObject(remoteStopTransactionRequest);
+
+            OCPPMessage msgOut = new OCPPMessage();
+            msgOut.MessageType = "2";
+            msgOut.Action = "RemoteStopTransaction";
+            msgOut.UniqueId = Guid.NewGuid().ToString("N");
+            msgOut.JsonPayload = jsonRemoteStopTransactionRequest;
+            msgOut.TaskCompletionSource = new TaskCompletionSource<string>();
+
+            // store HttpContext with MsgId for later answer processing (=> send anwer to API caller)
+            _requestQueue.Add(msgOut.UniqueId, msgOut);
+
+            // Send OCPP message with optional logging/dump
+            await SendOcpp16Message(msgOut, logger, chargePointStatus.WebSocket);
+
+            // Wait for asynchronous chargepoint response and processing
+            string apiResult = await msgOut.TaskCompletionSource.Task;
+
+            // 
+            apiCallerContext.Response.StatusCode = 200;
+            apiCallerContext.Response.ContentType = "application/json";
+            await apiCallerContext.Response.WriteAsync(apiResult);
+        }
+        
+
+        /// <summary>
+        /// Sends a Unlock-Request to the chargepoint
+        /// </summary>
+        private async Task UnlockConnector16(ChargePointStatus chargePointStatus, HttpContext apiCallerContext,
+            OCPPCoreContext dbContext)
+        {
+            ILogger logger = _logFactory.CreateLogger("OCPPMiddleware.OCPP16");
+            ControllerOCPP16 controller16 =
+                new ControllerOCPP16(_configuration, _logFactory, chargePointStatus, dbContext);
+
+            Messages_OCPP16.UnlockConnectorRequest
+                unlockConnectorRequest = new Messages_OCPP16.UnlockConnectorRequest();
             unlockConnectorRequest.ConnectorId = 0;
 
             string jsonResetRequest = JsonConvert.SerializeObject(unlockConnectorRequest);
@@ -205,43 +331,51 @@ namespace OCPP.Core.Server
                 if (msg.MessageType == "2")
                 {
                     // OCPP-Request
-                    ocppTextMessage = string.Format("[{0},\"{1}\",\"{2}\",{3}]", msg.MessageType, msg.UniqueId, msg.Action, msg.JsonPayload);
+                    ocppTextMessage = string.Format("[{0},\"{1}\",\"{2}\",{3}]", msg.MessageType, msg.UniqueId,
+                        msg.Action, msg.JsonPayload);
                 }
                 else
                 {
                     // OCPP-Response
-                    ocppTextMessage = string.Format("[{0},\"{1}\",{2}]", msg.MessageType, msg.UniqueId, msg.JsonPayload);
+                    ocppTextMessage =
+                        string.Format("[{0},\"{1}\",{2}]", msg.MessageType, msg.UniqueId, msg.JsonPayload);
                 }
             }
             else
             {
-                ocppTextMessage = string.Format("[{0},\"{1}\",\"{2}\",\"{3}\",{4}]", msg.MessageType, msg.UniqueId, msg.ErrorCode, msg.ErrorDescription, "{}");
+                ocppTextMessage = string.Format("[{0},\"{1}\",\"{2}\",\"{3}\",{4}]", msg.MessageType, msg.UniqueId,
+                    msg.ErrorCode, msg.ErrorDescription, "{}");
             }
+
             logger.LogTrace("OCPPMiddleware.OCPP16 => SendOcppMessage: {0}", ocppTextMessage);
 
             if (string.IsNullOrEmpty(ocppTextMessage))
             {
                 // invalid message
-                ocppTextMessage = string.Format("[{0},\"{1}\",\"{2}\",\"{3}\",{4}]", "4", string.Empty, Messages_OCPP16.ErrorCodes.ProtocolError, string.Empty, "{}");
+                ocppTextMessage = string.Format("[{0},\"{1}\",\"{2}\",\"{3}\",{4}]", "4", string.Empty,
+                    Messages_OCPP16.ErrorCodes.ProtocolError, string.Empty, "{}");
             }
 
             string dumpDir = _configuration.GetValue<string>("MessageDumpDir");
             if (!string.IsNullOrWhiteSpace(dumpDir))
             {
                 // Write outgoing message into dump directory
-                string path = Path.Combine(dumpDir, string.Format("{0}_ocpp16-out.txt", DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss-ffff")));
+                string path = Path.Combine(dumpDir,
+                    string.Format("{0}_ocpp16-out.txt", DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss-ffff")));
                 try
                 {
                     File.WriteAllText(path, ocppTextMessage);
                 }
                 catch (Exception exp)
                 {
-                    logger.LogError(exp, "OCPPMiddleware.SendOcpp16Message=> Error dumping message to path: '{0}'", path);
+                    logger.LogError(exp, "OCPPMiddleware.SendOcpp16Message=> Error dumping message to path: '{0}'",
+                        path);
                 }
             }
 
             byte[] binaryMessage = UTF8Encoding.UTF8.GetBytes(ocppTextMessage);
-            await webSocket.SendAsync(new ArraySegment<byte>(binaryMessage, 0, binaryMessage.Length), WebSocketMessageType.Text, true, CancellationToken.None);
+            await webSocket.SendAsync(new ArraySegment<byte>(binaryMessage, 0, binaryMessage.Length),
+                WebSocketMessageType.Text, true, CancellationToken.None);
         }
     }
 }
