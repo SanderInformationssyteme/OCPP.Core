@@ -13,6 +13,7 @@ using System.Net.WebSockets;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using OCPP.Core.Tools.Extentions;
 
 namespace OCPP.Core.Server
 {
@@ -88,7 +89,7 @@ namespace OCPP.Core.Server
                             if (!string.IsNullOrEmpty(authHeader))
                             {
                                 string[] cred = System.Text.ASCIIEncoding.ASCII.GetString(Convert.FromBase64String(authHeader.Substring(6))).Split(':');
-                                if (cred.Length == 2 && chargePoint.Username == cred[0] && chargePoint.Password == cred[1])
+                                if (cred.Length == 2 && chargePoint.Username == cred[0] && chargePoint.Password.PasswordEqual(cred[1]))
                                 {
                                     // Authentication match => OK
                                     _logger.LogInformation("OCPPMiddleware => SUCCESS: Basic authentication for chargepoint '{0}' match", chargePoint.ChargePointId);

@@ -24,7 +24,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
 using OCPP.Core.Database;
+using OCPP.Core.Tools.Extentions;
 using OCPP.Core.Management.Models;
 
 namespace OCPP.Core.Management.Controllers
@@ -101,7 +103,7 @@ namespace OCPP.Core.Management.Controllers
                             newChargePoint.Name = cpvm.Name;
                             newChargePoint.Comment = cpvm.Comment;
                             newChargePoint.Username = cpvm.Username;
-                            newChargePoint.Password = cpvm.Password;
+                            newChargePoint.Password = cpvm.Password?.EncryptPassword();
                             newChargePoint.ClientCertThumb = cpvm.ClientCertThumb;
                             DbContext.ChargePoints.Add(newChargePoint);
                             DbContext.SaveChanges();
@@ -120,7 +122,7 @@ namespace OCPP.Core.Management.Controllers
                         currentChargePoint.Name = cpvm.Name;
                         currentChargePoint.Comment = cpvm.Comment;
                         currentChargePoint.Username = cpvm.Username;
-                        currentChargePoint.Password = cpvm.Password;
+                        currentChargePoint.Password = cpvm.Password?.EncryptPassword();
                         currentChargePoint.ClientCertThumb = cpvm.ClientCertThumb;
 
                         DbContext.SaveChanges();
@@ -143,7 +145,7 @@ namespace OCPP.Core.Management.Controllers
                         cpvm.Name = currentChargePoint.Name;
                         cpvm.Comment = currentChargePoint.Comment;
                         cpvm.Username = currentChargePoint.Username;
-                        cpvm.Password = currentChargePoint.Password;
+                        cpvm.Password = currentChargePoint.Password.IsNullOrEmpty() ? "" : "********";
                         cpvm.ClientCertThumb = currentChargePoint.ClientCertThumb;
                     }
 

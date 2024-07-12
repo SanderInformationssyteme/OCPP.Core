@@ -38,6 +38,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OCPP.Core.Database\OCPP.Core.Database.csproj" />
+    <ProjectReference Include="..\OCPP.Core.Tools\OCPP.Core.Tools.csproj" />
   </ItemGroup>
 
   <ItemGroup>
