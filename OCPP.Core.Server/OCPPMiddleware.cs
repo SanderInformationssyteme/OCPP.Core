@@ -348,7 +348,8 @@ namespace OCPP.Core.Server
                             try
                             {
                                 ChargePointStatus status = null;
-                                ConnectorStatus connectorStatus = dbContext.Find<ConnectorStatus>(urlChargePointId);
+                                ConnectorStatus connectorStatus = dbContext.ConnectorStatuses.FirstOrDefault(x => x.ChargePointId == urlChargePointId);
+                                
                                 if (_chargePointStatusDict.TryGetValue(urlChargePointId, out status))
                                 {
                                     // Send message to chargepoint

@@ -119,6 +119,12 @@ namespace OCPP.Core.Server
             // The response (msgIn) has no action => check action in original request (msgOut)
             switch (msgOut.Action)
             {
+                case "RemoteStartTransaction":
+                    HandleRemoteStartTransaction(msgIn, msgOut);
+                    break;
+                case "RemoteStopTransaction":
+                    HandleRemoteStopTransaction(msgIn, msgOut);
+                    break;
                 case "Reset":
                     HandleReset(msgIn, msgOut);
                     break;
