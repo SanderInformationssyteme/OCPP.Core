@@ -59,8 +59,8 @@ namespace OCPP.Core.Database.Migrations
             modelBuilder.Entity("OCPP.Core.Database.ChargeTag", b =>
                 {
                     b.Property<string>("TagId")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<bool?>("Blocked")
                         .HasColumnType("bit");
@@ -69,8 +69,8 @@ namespace OCPP.Core.Database.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("ParentTagId")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("TagName")
                         .HasMaxLength(200)
