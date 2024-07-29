@@ -59,6 +59,7 @@ namespace OCPP.Core.Server
             {
                 string chargepointIdentifier;
                 string[] parts = context.Request.Path.Value.Split('/');
+                
                 if (string.IsNullOrWhiteSpace(parts[parts.Length - 1]))
                 {
                     // (Last part - 1) is chargepoint identifier
@@ -69,6 +70,8 @@ namespace OCPP.Core.Server
                     // Last part is chargepoint identifier
                     chargepointIdentifier = parts[parts.Length - 1];
                 }
+                
+                
                 _logger.LogInformation("OCPPMiddleware => Connection request with chargepoint identifier = '{0}'", chargepointIdentifier);
 
                 // Known chargepoint?
@@ -279,6 +282,7 @@ namespace OCPP.Core.Server
                 {
                     string cmd = urlParts[2];
                     string urlChargePointId = (urlParts.Length >= 4) ? urlParts[3] : null;
+                    string chargeTagID = (urlParts.Length >= 5) ? urlParts[4] : null;
                     _logger.LogTrace("OCPPMiddleware => cmd='{0}' / id='{1}' / FullPath='{2}')", cmd, urlChargePointId, context.Request.Path.Value);
 
                     if (cmd == "Status")
@@ -362,7 +366,7 @@ namespace OCPP.Core.Server
                                     else
                                     {
                                         // OCPP V1.6
-                                        await RemoteStartTransaction16(status,connectorStatus, "5A6476D4", context, dbContext);
+                                        await RemoteStartTransaction16(status,connectorStatus, chargeTagID, context, dbContext);
                                     }
                                 }
                                 else
@@ -403,7 +407,7 @@ namespace OCPP.Core.Server
                                         {
                                             // OCPP V2.0
                                             //await RemoteStopTransaction20(status, context, dbContext);
-                                            throw new NotImplementedException("RemoteStartTransaction20 not implemented");
+                                            throw new NotImplementedException("RemoteStopTransaction20 not implemented");
                                         }
                                         else
                                         {
