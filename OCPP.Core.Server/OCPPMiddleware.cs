@@ -282,7 +282,8 @@ namespace OCPP.Core.Server
                 {
                     string cmd = urlParts[2];
                     string urlChargePointId = (urlParts.Length >= 4) ? urlParts[3] : null;
-                    string chargeTagID = (urlParts.Length >= 5) ? urlParts[4] : null;
+                    int? urlConnectorId = (urlParts.Length >= 5) ? Convert.ToInt32(urlParts[4]) : null;
+                    string chargeTagID = (urlParts.Length >= 6) ? urlParts[5] : null;
                     _logger.LogTrace("OCPPMiddleware => cmd='{0}' / id='{1}' / FullPath='{2}')", cmd, urlChargePointId, context.Request.Path.Value);
 
                     if (cmd == "Status")
@@ -352,7 +353,7 @@ namespace OCPP.Core.Server
                             try
                             {
                                 ChargePointStatus status = null;
-                                ConnectorStatus connectorStatus = dbContext.ConnectorStatuses.FirstOrDefault(x => x.ChargePointId == urlChargePointId);
+                                ConnectorStatus connectorStatus = dbContext.ConnectorStatuses.FirstOrDefault(x => x.ChargePointId == urlChargePointId && x.ConnectorId == urlConnectorId);
                                 
                                 if (_chargePointStatusDict.TryGetValue(urlChargePointId, out status))
                                 {
@@ -395,7 +396,7 @@ namespace OCPP.Core.Server
                             try
                             {
                                 ChargePointStatus status = null;
-                                ConnectorStatus connectorStatus = dbContext.Find<ConnectorStatus>(urlChargePointId);
+                                ConnectorStatus connectorStatus = dbContext.ConnectorStatuses.FirstOrDefault(x => x.ChargePointId == urlChargePointId && x.ConnectorId == urlConnectorId);
                                 Transaction openTransaction = dbContext.Transactions.Where(t => t.ChargePointId == urlChargePointId && t.ConnectorId == connectorStatus.ConnectorId && t.StopTime == null).FirstOrDefault();
                                 if (_chargePointStatusDict.TryGetValue(urlChargePointId, out status))
                                 {
