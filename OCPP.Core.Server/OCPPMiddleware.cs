@@ -189,15 +189,11 @@ namespace OCPP.Core.Server
 
                                 lock (_chargePointStatusDict)
                                 {
-                                    // Check if this chargepoint already/still hat a status object
+                                    // Check if this chargepoint already/still has a status object
                                     if (_chargePointStatusDict.ContainsKey(chargepointIdentifier))
                                     {
-                                        // exists => check status
-                                        if (_chargePointStatusDict[chargepointIdentifier].WebSocket.State != WebSocketState.Open)
-                                        {
-                                            // Closed or aborted => remove
-                                            _chargePointStatusDict.Remove(chargepointIdentifier);
-                                        }
+                                        // Closed or aborted => remove
+                                        _chargePointStatusDict.Remove(chargepointIdentifier);
                                     }
 
                                     _chargePointStatusDict.Add(chargepointIdentifier, chargePointStatus);
