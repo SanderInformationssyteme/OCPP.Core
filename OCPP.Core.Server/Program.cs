@@ -35,10 +35,6 @@ namespace OCPP.Core.Server
     {
         public static void Main(string[] args)
         {
-            IConfiguration config = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json", optional: false)
-                .Build();
-
             CreateHostBuilder(args).Build().Run();
         }
 

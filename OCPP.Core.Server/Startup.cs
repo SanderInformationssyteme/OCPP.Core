@@ -77,14 +77,15 @@ namespace OCPP.Core.Server
                 app.UseDeveloperExceptionPage();
             }
 
-            // Migrate database
-            using var scope = serviceScopeFactory.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<OCPPCoreContext>();
-            // but only when not disabled (needs admin permissions in SQL-Server!)
-            bool dbMigrate = Configuration.GetValue<bool>("AutoMigrateDB", true);
-            if (dbMigrate)
+            // After a reboot the database server (e.g. SQL-Server service) may not be ready yet.
+            // An exception here would leave IIS with a failed app (HTTP 500.30) until the app pool is restarted
+            // => wait a limited time (below the IIS startupTimeLimit of 120s), then continue startup
+            //    and keep trying in the background
+            int dbStartupTimeout = Configuration.GetValue<int>("DbStartupTimeout", 60);
+            if (!InitDatabase(serviceScopeFactory, logger, DateTime.Now.AddSeconds(dbStartupTimeout)))
             {
-                dbContext.Database.Migrate();
+                logger.LogError("Startup => Database not ready after {0} seconds => continue startup and retry in background", dbStartupTimeout);
+                Task.Run(() => InitDatabase(serviceScopeFactory, logger, DateTime.MaxValue));
             }
 
             // Set WebSocketsOptions
@@ -97,6 +98,42 @@ namespace OCPP.Core.Server
 
             // Integrate custom OCPP middleware for message processing
             app.UseOCPPMiddleware();
+        }
+
+        /// <summary>
+        /// Migrates the database (or only checks the connection when "AutoMigrateDB" is disabled).
+        /// Retries every 5 seconds until success or until 'waitUntil' is reached.
+        /// </summary>
+        private bool InitDatabase(IServiceScopeFactory serviceScopeFactory, ILogger logger, DateTime waitUntil)
+        {
+            // Migration only when not disabled (needs admin permissions in SQL-Server!)
+            bool dbMigrate = Configuration.GetValue<bool>("AutoMigrateDB", true);
+            int attempt = 0;
+            while (true)
+            {
+                attempt++;
+                try
+                {
+                    using var scope = serviceScopeFactory.CreateScope();
+                    var dbContext = scope.ServiceProvider.GetRequiredService<OCPPCoreContext>();
+                    if (dbMigrate)
+                    {
+                        dbContext.Database.Migrate();
+                    }
+                    else if (!dbContext.Database.CanConnect())
+                    {
+                        throw new InvalidOperationException("Database not reachable");
+                    }
+                    logger.LogInformation("Startup => Database ready (attempt {0})", attempt);
+                    return true;
+                }
+                catch (Exception exp)
+                {
+                    if (DateTime.Now >= waitUntil) return false;
+                    logger.LogWarning("Startup => Database not ready (attempt {0}): {1} => retry in 5 seconds", attempt, exp.Message);
+                    Thread.Sleep(5000);
+                }
+            }
         }
     }
 }

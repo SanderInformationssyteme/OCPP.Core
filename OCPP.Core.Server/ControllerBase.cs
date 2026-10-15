@@ -18,6 +18,7 @@
  */
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -27,7 +28,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Schema;
+using NJsonSchema;
+using NJsonSchema.Validation;
 using OCPP.Core.Database;
 using OCPP.Core.Server.Messages_OCPP16;
 
@@ -88,9 +90,9 @@ namespace OCPP.Core.Server
 
             bool validateMessages = Configuration.GetValue<bool>("ValidateMessages", false);
 
-            string schemaJson = null;
-            if (validateMessages && 
-                !string.IsNullOrEmpty(codeBase) && 
+            JsonSchema schema = null;
+            if (validateMessages &&
+                !string.IsNullOrEmpty(codeBase) &&
                 Directory.Exists(codeBase))
             {
                 string msgTypeName = typeof(T).Name;
@@ -98,38 +100,37 @@ namespace OCPP.Core.Server
                 if (File.Exists(filename))
                 {
                     Logger.LogTrace("DeserializeMessage => Using schema file: {0}", filename);
-                    schemaJson = File.ReadAllText(filename);
+                    // Parse each schema file only once (cached)
+                    schema = _schemaCache.GetOrAdd(filename, f => JsonSchema.FromJsonAsync(File.ReadAllText(f)).GetAwaiter().GetResult());
                 }
             }
 
-            JsonTextReader reader = new JsonTextReader(new StringReader(msg.JsonPayload));
-            JsonSerializer serializer = new JsonSerializer();
-
-            if (!string.IsNullOrEmpty(schemaJson))
+            if (schema != null)
             {
-                JSchemaValidatingReader validatingReader = new JSchemaValidatingReader(reader);
-                validatingReader.Schema = JSchema.Parse(schemaJson);
-
-                IList<string> messages = new List<string>();
-                validatingReader.ValidationEventHandler += (o, a) => messages.Add(a.Message);
-                T obj = serializer.Deserialize<T>(validatingReader);
-                if (messages.Count > 0)
+                ICollection<ValidationError> errors = schema.Validate(msg.JsonPayload);
+                if (errors.Count > 0)
                 {
-                    foreach (string err in messages)
+                    foreach (ValidationError err in errors)
                     {
                         Logger.LogWarning("DeserializeMessage {0} => Validation error: {1}", msg.Action, err);
                     }
                     throw new FormatException("Message validation failed");
                 }
-                return obj;
             }
             else
             {
-                // Deserialization WITHOUT schema validation
                 Logger.LogTrace("DeserializeMessage => Deserialization without schema validation");
-                return serializer.Deserialize<T>(reader);
             }
+
+            JsonTextReader reader = new JsonTextReader(new StringReader(msg.JsonPayload));
+            JsonSerializer serializer = new JsonSerializer();
+            return serializer.Deserialize<T>(reader);
         }
+
+        /// <summary>
+        /// Cache for parsed JSON schemas (key = schema file path)
+        /// </summary>
+        private static readonly ConcurrentDictionary<string, JsonSchema> _schemaCache = new ConcurrentDictionary<string, JsonSchema>();
 
 
         /// <summary>

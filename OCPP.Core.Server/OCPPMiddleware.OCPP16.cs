@@ -55,26 +55,10 @@ namespace OCPP.Core.Server
                             // reset memory stream für next message
                             memStream = new MemoryStream(buffer.Length);
 
-                            string dumpDir = _configuration.GetValue<string>("MessageDumpDir");
-                            if (!string.IsNullOrWhiteSpace(dumpDir))
-                            {
-                                string path = Path.Combine(dumpDir,
-                                    string.Format("{0}_ocpp16-in.txt",
-                                        DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss-ffff")));
-                                try
-                                {
-                                    // Write incoming message into dump directory
-                                    File.WriteAllBytes(path, bMessage);
-                                }
-                                catch (Exception exp)
-                                {
-                                    logger.LogError(exp,
-                                        "OCPPMiddleware.Receive16 => Error dumping incoming message to path: '{0}'",
-                                        path);
-                                }
-                            }
-
                             string ocppMessage = UTF8Encoding.UTF8.GetString(bMessage);
+
+                            // Write incoming message into daily dump file
+                            MessageDumper.Dump(_configuration, logger, "ocpp16-in", chargePointStatus.Id, ocppMessage);
 
                             Match match = Regex.Match(ocppMessage, MessageRegExp);
                             if (match != null && match.Groups != null && match.Groups.Count >= 3)
@@ -94,7 +78,7 @@ namespace OCPP.Core.Server
                                     OCPPMessage msgOut = controller16.ProcessRequest(msgIn);
 
                                     // Send OCPP message with optional logging/dump
-                                    await SendOcpp16Message(msgOut, logger, chargePointStatus.WebSocket);
+                                    await SendOcpp16Message(msgOut, logger, chargePointStatus);
                                 }
                                 else if (msgIn.MessageType == "3" || msgIn.MessageType == "4")
                                 {
@@ -175,7 +159,7 @@ namespace OCPP.Core.Server
             _requestQueue.Add(msgOut.UniqueId, msgOut);
 
             // Send OCPP message with optional logging/dump
-            await SendOcpp16Message(msgOut, logger, chargePointStatus.WebSocket);
+            await SendOcpp16Message(msgOut, logger, chargePointStatus);
 
             // Wait for asynchronous chargepoint response and processing
             string apiResult = await msgOut.TaskCompletionSource.Task;
@@ -227,7 +211,7 @@ namespace OCPP.Core.Server
             _requestQueue.Add(msgOut.UniqueId, msgOut);
 
             // Send OCPP message with optional logging/dump
-            await SendOcpp16Message(msgOut, logger, chargePointStatus.WebSocket);
+            await SendOcpp16Message(msgOut, logger, chargePointStatus);
 
             // Wait for asynchronous chargepoint response and processing
             string apiResult = await msgOut.TaskCompletionSource.Task;
@@ -272,7 +256,7 @@ namespace OCPP.Core.Server
             _requestQueue.Add(msgOut.UniqueId, msgOut);
 
             // Send OCPP message with optional logging/dump
-            await SendOcpp16Message(msgOut, logger, chargePointStatus.WebSocket);
+            await SendOcpp16Message(msgOut, logger, chargePointStatus);
 
             // Wait for asynchronous chargepoint response and processing
             string apiResult = await msgOut.TaskCompletionSource.Task;
@@ -311,7 +295,7 @@ namespace OCPP.Core.Server
             _requestQueue.Add(msgOut.UniqueId, msgOut);
 
             // Send OCPP message with optional logging/dump
-            await SendOcpp16Message(msgOut, logger, chargePointStatus.WebSocket);
+            await SendOcpp16Message(msgOut, logger, chargePointStatus);
 
             // Wait for asynchronous chargepoint response and processing
             string apiResult = await msgOut.TaskCompletionSource.Task;
@@ -322,7 +306,7 @@ namespace OCPP.Core.Server
             await apiCallerContext.Response.WriteAsync(apiResult);
         }
 
-        private async Task SendOcpp16Message(OCPPMessage msg, ILogger logger, WebSocket webSocket)
+        private async Task SendOcpp16Message(OCPPMessage msg, ILogger logger, ChargePointStatus chargePointStatus)
         {
             string ocppTextMessage = null;
 
@@ -356,25 +340,11 @@ namespace OCPP.Core.Server
                     Messages_OCPP16.ErrorCodes.ProtocolError, string.Empty, "{}");
             }
 
-            string dumpDir = _configuration.GetValue<string>("MessageDumpDir");
-            if (!string.IsNullOrWhiteSpace(dumpDir))
-            {
-                // Write outgoing message into dump directory
-                string path = Path.Combine(dumpDir,
-                    string.Format("{0}_ocpp16-out.txt", DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss-ffff")));
-                try
-                {
-                    File.WriteAllText(path, ocppTextMessage);
-                }
-                catch (Exception exp)
-                {
-                    logger.LogError(exp, "OCPPMiddleware.SendOcpp16Message=> Error dumping message to path: '{0}'",
-                        path);
-                }
-            }
+            // Write outgoing message into daily dump file
+            MessageDumper.Dump(_configuration, logger, "ocpp16-out", chargePointStatus.Id, ocppTextMessage);
 
             byte[] binaryMessage = UTF8Encoding.UTF8.GetBytes(ocppTextMessage);
-            await webSocket.SendAsync(new ArraySegment<byte>(binaryMessage, 0, binaryMessage.Length),
+            await chargePointStatus.WebSocket.SendAsync(new ArraySegment<byte>(binaryMessage, 0, binaryMessage.Length),
                 WebSocketMessageType.Text, true, CancellationToken.None);
         }
     }
